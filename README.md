@@ -17,7 +17,7 @@ Word Crush là một trò chơi nối từ trực tuyến nhiều người chơi
 
 1. Clone repository:
 ```
-git clone https://github.com/your-username/word-crush.git
+git clone https://github.com/anh-quan1207/Word-crush.git
 cd word-crush
 ```
 
