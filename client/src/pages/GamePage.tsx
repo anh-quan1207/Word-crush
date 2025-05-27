@@ -2,9 +2,6 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSocket } from '../contexts/SocketContext';
 import Timer from '../components/Timer';
-import WordChain from '../components/WordChain';
-import PlayersList from '../components/PlayersList';
-import WordInput from '../components/WordInput';
 
 interface Player {
   id: string;
@@ -26,25 +23,33 @@ interface WordHistory {
   playerId: string;
 }
 
+interface PlayerOrder {
+  id: string;
+  name: string;
+}
+
 function GamePage() {
-  const { roomId } = useParams<keyof GameParams>();
+  const { roomId } = useParams<{ roomId: string }>();
   const { socket } = useSocket();
   const navigate = useNavigate();
   const [players, setPlayers] = useState<Player[]>([]);
-  const [currentWord, setCurrentWord] = useState('');
-  const [inputWord, setInputWord] = useState('');
-  const [isMyTurn, setIsMyTurn] = useState(false);
-  const [currentPlayerId, setCurrentPlayerId] = useState('');
-  const [lastPlayerId, setLastPlayerId] = useState('');
-  const [losers, setLosers] = useState<string[]>([]);
-  const [gameEnded, setGameEnded] = useState(false);
-  const [rankings, setRankings] = useState<Player[]>([]);
-  const [timeRemaining, setTimeRemaining] = useState(30);
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [reports, setReports] = useState<ReportVote[]>([]);
-  const [gameMessage, setGameMessage] = useState('');
-  const [error, setError] = useState('');
+  const [currentPlayerId, setCurrentPlayerId] = useState<string>('');
+  const [nextPlayerId, setNextPlayerId] = useState<string>('');
+  const [nextPlayerName, setNextPlayerName] = useState<string>('');
+  const [isMyTurn, setIsMyTurn] = useState<boolean>(false);
+  const [inputWord, setInputWord] = useState<string>('');
+  const [currentWord, setCurrentWord] = useState<string>('');
   const [wordHistory, setWordHistory] = useState<WordHistory[]>([]);
+  const [lastPlayerId, setLastPlayerId] = useState<string>('');
+  const [gameEnded, setGameEnded] = useState<boolean>(false);
+  const [losers, setLosers] = useState<string[]>([]);
+  const [rankings, setRankings] = useState<Player[]>([]);
+  const [gameMessage, setGameMessage] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  const [showReportModal, setShowReportModal] = useState<boolean>(false);
+  const [reports, setReports] = useState<ReportVote[]>([]);
+  const [timeRemaining, setTimeRemaining] = useState<number>(30);
+  const [playerOrder, setPlayerOrder] = useState<PlayerOrder[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const myPlayerId = socket?.id;
@@ -68,9 +73,14 @@ function GamePage() {
       }
     });
 
-    socket.on('game-started', (data: { currentPlayerId: string }) => {
-      console.log('Game đã bắt đầu với người chơi đầu tiên:', data.currentPlayerId);
-      setGameMessage('Trò chơi đã bắt đầu!');
+    socket.on('game-started', (data: { currentPlayerId: string, playerOrder: PlayerOrder[] }) => {
+      setCurrentPlayerId(data.currentPlayerId);
+      setPlayerOrder(data.playerOrder);
+      setIsMyTurn(data.currentPlayerId === socket.id);
+      setWordHistory([]);
+      setCurrentWord('');
+      setGameEnded(false);
+      setLosers([]);
     });
 
     socket.on('players-update', (updatedPlayers: Player[]) => {
@@ -81,9 +91,18 @@ function GamePage() {
       setPlayers(Array.from(uniquePlayersMap.values()));
     });
 
-    socket.on('next-player', (data: { currentPlayerId: string, timeRemaining: number }) => {
+    socket.on('next-player', (data: { 
+      currentPlayerId: string, 
+      nextPlayerId: string, 
+      nextPlayerName: string, 
+      timeRemaining: number,
+      playerOrder: PlayerOrder[]
+    }) => {
       console.log('Người chơi tiếp theo:', data.currentPlayerId);
       setCurrentPlayerId(data.currentPlayerId);
+      setNextPlayerId(data.nextPlayerId);
+      setNextPlayerName(data.nextPlayerName);
+      setPlayerOrder(data.playerOrder);
       setIsMyTurn(data.currentPlayerId === socket.id);
       setInputWord('');
       setTimeRemaining(data.timeRemaining);
@@ -91,9 +110,9 @@ function GamePage() {
       const currentPlayer = players.find(p => p.id === data.currentPlayerId);
       if (currentPlayer) {
         if (data.currentPlayerId === socket.id) {
-          setGameMessage('Đến lượt của bạn!');
+          setGameMessage(`Đến lượt của bạn! Tiếp theo sẽ là ${data.nextPlayerName}`);
         } else {
-          setGameMessage(`Đến lượt của ${currentPlayer.name}`);
+          setGameMessage(`Đến lượt của ${currentPlayer.name}. Tiếp theo sẽ là ${data.nextPlayerName}`);
         }
       }
     });
@@ -117,13 +136,39 @@ function GamePage() {
       if (player) {
         setGameMessage(`${player.name} đã thua: ${data.reason}`);
         
-        setTimeout(() => setGameMessage(''), 3000);
+        setTimeout(() => {
+          const currentPlayer = players.find(p => p.id === currentPlayerId);
+          if (currentPlayer) {
+            if (currentPlayerId === socket.id) {
+              setGameMessage(`Đến lượt của bạn! Tiếp theo sẽ là ${nextPlayerName}`);
+            } else {
+              setGameMessage(`Đến lượt của ${currentPlayer.name}. Tiếp theo sẽ là ${nextPlayerName}`);
+            }
+          }
+        }, 3000);
       }
     });
 
-    socket.on('game-ended', (data: { losers: string[]; rankings: Player[] }) => {
+    socket.on('game-ended', (data: { losers: string[]; rankings: Player[], winner?: Player }) => {
       setGameEnded(true);
       setRankings(data.rankings);
+      
+      // Reset thông tin lượt chơi khi game kết thúc
+      setCurrentPlayerId('');
+      setNextPlayerId('');
+      setNextPlayerName('');
+      
+      if (data.winner) {
+        setGameMessage(`Người thắng: ${data.winner.name}!`);
+      }
+      
+      // Tự động chuyển về phòng chờ sau 10 giây
+      setTimeout(() => {
+        if (socket) {
+          socket.emit('player-back-to-room', { roomId });
+          navigate(`/room/${roomId}`);
+        }
+      }, 10000);
     });
 
     socket.on('error-message', (data: { message: string }) => {
@@ -149,7 +194,16 @@ function GamePage() {
     socket.on('report-finished', (data: { accepted: boolean }) => {
       setShowReportModal(false);
       setReports([]);
-      setGameMessage('');
+      
+      // Khôi phục thông báo lượt chơi
+      const currentPlayer = players.find(p => p.id === currentPlayerId);
+      if (currentPlayer) {
+        if (currentPlayerId === socket.id) {
+          setGameMessage(`Đến lượt của bạn! Tiếp theo sẽ là ${nextPlayerName}`);
+        } else {
+          setGameMessage(`Đến lượt của ${currentPlayer.name}. Tiếp theo sẽ là ${nextPlayerName}`);
+        }
+      }
     });
 
     return () => {
@@ -165,7 +219,7 @@ function GamePage() {
       socket.off('game-started');
       socket.off('timer-update');
     };
-  }, [socket, roomId, navigate, players]);
+  }, [socket, roomId, navigate, players, currentPlayerId, nextPlayerName]);
 
   const submitWord = () => {
     if (!inputWord.trim()) return;
@@ -204,8 +258,12 @@ function GamePage() {
   const backToRoom = () => {
     if (socket) {
       socket.emit('player-back-to-room', { roomId });
+      setTimeout(() => {
+        navigate(`/room/${roomId}`);
+      }, 200);
+    } else {
+      navigate(`/room/${roomId}`);
     }
-    navigate(`/room/${roomId}`);
   };
 
   if (gameEnded) {
@@ -213,16 +271,33 @@ function GamePage() {
       <div className="bg-white rounded-xl shadow-md p-6">
         <h1 className="text-3xl font-bold text-purple-700 mb-6 text-center">Trò chơi kết thúc!</h1>
         
+        {/* Chỉ hiển thị thông báo nếu là thông báo về người thắng cuộc */}
+        {gameMessage && gameMessage.includes('Người thắng') && (
+          <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 mb-6 rounded relative">
+            <span className="block sm:inline">{gameMessage}</span>
+          </div>
+        )}
+        
         <div className="bg-gradient-to-r from-purple-100 to-indigo-100 p-4 rounded-lg mb-6">
           <h2 className="text-xl font-semibold text-purple-800 mb-3">Xếp hạng</h2>
           <div className="space-y-2">
             {rankings.map((player, index) => (
               <div 
                 key={player.id} 
-                className={`p-3 rounded-lg flex justify-between items-center ${index === 0 ? 'bg-yellow-100' : index === 1 ? 'bg-gray-100' : index === 2 ? 'bg-amber-100' : 'bg-white'}`}
+                className={`p-3 rounded-lg flex justify-between items-center ${
+                  index === 0 ? 'bg-yellow-100' : 
+                  index === 1 ? 'bg-gray-200' : 
+                  index === 2 ? 'bg-amber-50' : 
+                  'bg-white'
+                }`}
               >
                 <div className="flex items-center">
-                  <span className="w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold mr-3">
+                  <span className={`w-6 h-6 rounded-full ${
+                    index === 0 ? 'bg-yellow-500' :
+                    index === 1 ? 'bg-gray-500' :
+                    index === 2 ? 'bg-amber-600' :
+                    'bg-purple-600'
+                  } text-white flex items-center justify-center font-bold mr-3`}>
                     {index + 1}
                   </span>
                   <span className="font-medium">{player.name}</span>
@@ -234,11 +309,12 @@ function GamePage() {
         </div>
         
         <div className="text-center">
+          <p className="text-gray-500 mb-4">Tự động quay lại phòng chờ sau 10 giây...</p>
           <button
             className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded transition duration-300"
             onClick={backToRoom}
           >
-            Quay lại phòng chờ
+            Quay lại phòng chờ ngay
           </button>
         </div>
       </div>
@@ -262,59 +338,149 @@ function GamePage() {
       <div className="p-6">
         <div className="flex flex-col md:flex-row justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-purple-700 mb-4 md:mb-0">Word Crush</h1>
+          
           <div className="flex items-center space-x-4">
-            <div className="bg-gray-100 p-2 rounded-lg">
-              <span className="text-gray-600 mr-2">Mã phòng:</span>
-              <span className="font-mono font-bold">{roomId}</span>
-            </div>
-            {gameEnded && (
-              <button
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300"
-                onClick={backToRoom}
-              >
-                Quay lại phòng chờ
-              </button>
-            )}
+            <Timer 
+              seconds={timeRemaining} 
+              isActive={isMyTurn} 
+              onTimeout={() => {
+                if (isMyTurn) {
+                  socket?.emit('player-timeout', { roomId });
+                }
+              }}
+            />
           </div>
         </div>
         
-        {gameEnded && (
-          <div className="bg-purple-100 p-4 rounded-lg text-center">
-            <p className="text-purple-700 font-bold text-xl mb-2">Trò chơi kết thúc!</p>
-            <p className="text-gray-600">Xem bảng điểm bên trái để biết người chiến thắng.</p>
+        {/* Hiển thị thứ tự người chơi */}
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-purple-700 mb-2">Thứ tự chơi:</h2>
+          <div className="flex flex-wrap gap-2">
+            {playerOrder.map((player) => (
+              <div 
+                key={player.id}
+                className={`px-3 py-1.5 rounded-full text-sm ${
+                  player.id === currentPlayerId 
+                    ? 'bg-green-500 text-white font-bold' 
+                    : player.id === nextPlayerId 
+                      ? 'bg-blue-100 border border-blue-500' 
+                      : 'bg-gray-100'
+                }`}
+              >
+                {player.name} {player.id === currentPlayerId ? '(Đang chơi)' : player.id === nextPlayerId ? '(Tiếp theo)' : ''}
+              </div>
+            ))}
           </div>
-        )}
+        </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="md:col-span-1">
-            <PlayersList 
-              players={players} 
-              currentPlayerId={currentPlayerId} 
-              scores={rankings}
-              hostId={socket?.id} 
-            />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+          <div className="md:col-span-1 bg-gray-50 p-4 rounded-lg">
+            <h3 className="text-lg font-semibold mb-3">Người chơi</h3>
+            <ul className="space-y-2">
+              {players.map(player => (
+                <li 
+                  key={player.id}
+                  className={`p-2 rounded flex justify-between ${player.id === currentPlayerId ? 'bg-green-100 font-bold' : ''} ${losers.includes(player.id) ? 'text-gray-400 line-through' : ''}`}
+                >
+                  <span>{player.name}</span>
+                  {player.id === currentPlayerId && !losers.includes(player.id) && (
+                    <span className="text-green-600">●</span>
+                  )}
+                </li>
+              ))}
+            </ul>
           </div>
           
           <div className="md:col-span-3">
-            <div className="mb-6">
-              <WordChain words={wordHistory.map(item => item.word)} />
+            <div className="bg-gray-50 p-4 rounded-lg mb-6">
+              <h3 className="text-lg font-semibold mb-3">Từ hiện tại</h3>
+              {currentWord ? (
+                <div className="flex flex-col justify-center items-center bg-white p-4 rounded-lg shadow-sm">
+                  <div className="text-2xl font-bold text-purple-700 min-h-[60px] mb-3">
+                    {currentWord}
+                  </div>
+                  
+                  {currentWord && (
+                    <div className="text-sm text-gray-600 mb-2">
+                      Từ tiếp theo phải bắt đầu bằng từ: <span className="font-bold text-purple-700 text-xl">
+                        {currentWord.trim().split(/\s+/).pop()}
+                      </span>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center justify-between w-full">
+                    {lastPlayerId && (
+                      <div className="text-sm text-gray-600">
+                        Người chơi: {players.find(p => p.id === lastPlayerId)?.name || 'Không xác định'}
+                      </div>
+                    )}
+                    
+                    {currentWord && myPlayerId && lastPlayerId && (myPlayerId !== lastPlayerId) && (
+                      <button
+                        onClick={reportWord}
+                        className="px-3 py-1 rounded text-sm font-bold bg-red-600 hover:bg-red-700 text-white transition duration-200"
+                        title="Báo cáo từ không hợp lệ"
+                      >
+                        Báo cáo
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-gray-500 italic flex justify-center items-center min-h-[60px] bg-white p-4 rounded-lg shadow-sm">
+                  Chưa có từ nào
+                </div>
+              )}
             </div>
             
-            {isMyTurn && socket?.id === currentPlayerId && (
-              <WordInput 
-                onSubmitWord={submitWord} 
-                disabled={false} 
-                lastWord={wordHistory.length > 0 ? wordHistory[wordHistory.length - 1].word : ''} 
-                timeLeft={timeRemaining}
-              />
-            )}
-            
-            {socket?.id !== currentPlayerId && (
-              <div className="bg-gray-100 p-4 rounded-lg text-center">
-                <p className="text-gray-600">Chờ lượt {players.find(p => p.id === currentPlayerId)?.name || 'Người chơi'} đang suy nghĩ...</p>
-                <p className="text-gray-500 mt-2">Thời gian còn lại: {timeRemaining} giây</p>
+            {wordHistory.length > 0 && (
+              <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                <h3 className="text-lg font-semibold mb-3">Lịch sử từ</h3>
+                <div className="bg-white p-3 rounded-lg shadow-sm max-h-40 overflow-y-auto">
+                  <ul className="space-y-1">
+                    {wordHistory.map((item, index) => {
+                      const player = players.find(p => p.id === item.playerId);
+                      return (
+                        <li key={index} className="text-sm flex justify-between">
+                          <span className="font-medium">{item.word}</span>
+                          <span className="text-gray-600">{player?.name || 'Người chơi'}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
               </div>
             )}
+            
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="text-lg font-semibold mb-3">
+                {isMyTurn ? 'Lượt của bạn' : 'Chờ lượt của bạn'}
+              </h3>
+              
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  value={inputWord}
+                  onChange={(e) => setInputWord(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && isMyTurn && inputWord.trim() && !losers.includes(myPlayerId || '')) {
+                      e.preventDefault();
+                      submitWord();
+                    }
+                  }}
+                  disabled={!isMyTurn || losers.includes(myPlayerId || '')}
+                  placeholder={isMyTurn ? "Nhập từ của bạn..." : "Chờ lượt của bạn..."}
+                  className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+                <button
+                  onClick={submitWord}
+                  disabled={!isMyTurn || !inputWord.trim() || losers.includes(myPlayerId || '')}
+                  className={`px-4 py-2 rounded font-bold ${isMyTurn && inputWord.trim() ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-gray-300 text-gray-600 cursor-not-allowed'}`}
+                >
+                  Gửi
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

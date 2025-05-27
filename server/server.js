@@ -42,8 +42,10 @@ io.on('connection', (socket) => {
         isPlaying: false,
         currentWord: '',
         currentPlayerId: '',
+        lastWordPlayerId: '',
         losers: [],
-        reports: []
+        reports: [],
+        playerOrderIndex: 0
       }
     });
     
@@ -64,24 +66,6 @@ io.on('connection', (socket) => {
     
     if (existingPlayerIndex !== -1) {
       // Người chơi đã tồn tại, trả về thông tin phòng
-      
-      // Nếu game đã kết thúc, đánh dấu người chơi đã quay lại phòng chờ
-      if (!room.gameState.isPlaying) {
-        if (!room.playersBackToRoom) {
-          room.playersBackToRoom = new Set();
-        }
-        room.playersBackToRoom.add(socket.id);
-        
-        console.log(`Player ${socket.id} rejoined the waiting room. Total back: ${room.playersBackToRoom.size}/${room.players.length}`);
-        
-        // Kiểm tra xem tất cả người chơi đã quay lại phòng chờ chưa
-        if (room.playersBackToRoom.size === room.players.length) {
-          io.to(roomId).emit('all-players-back', {
-            message: 'Tất cả người chơi đã quay lại phòng chờ. Chủ phòng có thể bắt đầu game mới.'
-          });
-        }
-      }
-      
       callback({ 
         success: true, 
         room: {
@@ -133,23 +117,24 @@ io.on('connection', (socket) => {
       return;
     }
     
-    // Kiểm tra tất cả người chơi đều đã quay lại phòng chờ (không có ai đang ở màn hình kết quả)
     // Nếu đang trong game, thì không cho bắt đầu game mới
     if (room.gameState.isPlaying) {
-      socket.emit('error-message', { message: 'Vui lòng đợi tất cả người chơi quay lại phòng chờ' });
+      socket.emit('error-message', { message: 'Game đang diễn ra, không thể bắt đầu game mới' });
       return;
     }
     
     // Đếm số lượng người chơi có kết nối
     const connectedSockets = io.sockets.adapter.rooms.get(roomId);
     if (!connectedSockets || connectedSockets.size < room.players.length) {
-      socket.emit('error-message', { message: 'Vui lòng đợi tất cả người chơi quay lại phòng chờ' });
+      socket.emit('error-message', { message: 'Không đủ người chơi có kết nối trong phòng' });
       return;
     }
     
-    // Kiểm tra dựa trên danh sách người chơi đã quay lại phòng chờ
+    // Kiểm tra tất cả người chơi đã quay lại phòng chờ
     if (room.playersBackToRoom && room.playersBackToRoom.size < room.players.length) {
-      socket.emit('error-message', { message: 'Vui lòng đợi tất cả người chơi quay lại phòng chờ' });
+      const missingPlayers = room.players.filter(p => !room.playersBackToRoom.has(p.id));
+      const missingNames = missingPlayers.map(p => p.name).join(', ');
+      socket.emit('error-message', { message: `Vui lòng đợi ${missingNames} quay lại phòng chờ` });
       return;
     }
     
@@ -158,29 +143,45 @@ io.on('connection', (socket) => {
     room.gameState.currentWord = '';
     room.gameState.losers = [];
     room.gameState.reports = [];
+    room.gameState.lastWordPlayerId = '';
     
     // Reset danh sách người chơi đã quay lại
     if (room.playersBackToRoom) {
       room.playersBackToRoom.clear();
     }
     
-    // Random select first player
-    const randomPlayerIndex = Math.floor(Math.random() * room.players.length);
-    const firstPlayerId = room.players[randomPlayerIndex].id;
+    // Xáo trộn thứ tự người chơi ngẫu nhiên
+    const shuffledPlayers = [...room.players].sort(() => Math.random() - 0.5);
+    
+    // Lưu danh sách đã xáo trộn để sử dụng trong quá trình chơi
+    room.gameState.shuffledPlayerOrder = shuffledPlayers.map(p => p.id);
+    
+    // Bắt đầu với người chơi đầu tiên trong danh sách đã xáo trộn
+    room.gameState.playerOrderIndex = 0;
+    const firstPlayerId = shuffledPlayers[0].id;
     room.gameState.currentPlayerId = firstPlayerId;
+    
+    // Xác định người chơi tiếp theo
+    const nextPlayerIndex = 1 % shuffledPlayers.length;
+    const nextPlayerId = shuffledPlayers[nextPlayerIndex].id;
+    const nextPlayerName = room.players.find(p => p.id === nextPlayerId)?.name || 'Người chơi tiếp theo';
     
     console.log(`Game started in room ${roomId}. First player: ${firstPlayerId}`);
     
     // Thông báo cho tất cả người chơi về việc game bắt đầu
     io.to(roomId).emit('game-started', {
-      currentPlayerId: firstPlayerId
+      currentPlayerId: firstPlayerId,
+      playerOrder: shuffledPlayers.map(p => ({ id: p.id, name: p.name }))
     });
     
     // Ngay sau đó, gửi thông báo về người chơi đầu tiên
     setTimeout(() => {
       io.to(roomId).emit('next-player', {
         currentPlayerId: firstPlayerId,
-        timeRemaining: 30
+        nextPlayerId: nextPlayerId,
+        nextPlayerName: nextPlayerName,
+        timeRemaining: 30,
+        playerOrder: shuffledPlayers.map(p => ({ id: p.id, name: p.name }))
       });
     }, 500);
   });
@@ -233,6 +234,9 @@ io.on('connection', (socket) => {
       
       room.gameState.currentWord = word;
     }
+    
+    // Lưu lại ID của người chơi vừa nhập từ để xử lý báo cáo chính xác
+    room.gameState.lastWordPlayerId = socket.id;
     
     // Thông báo cho tất cả người chơi về từ mới
     io.to(roomId).emit('word-update', {
@@ -299,9 +303,13 @@ io.on('connection', (socket) => {
     // If all players voted or majority reached
     if (totalVotes === totalPlayers || yesVotes > totalPlayers / 2) {
       if (yesVotes >= totalPlayers / 2) {
-        // Word rejected, current player loses
-        const currentPlayerId = room.gameState.currentPlayerId;
-        handlePlayerLose(roomId, currentPlayerId, 'Từ bị từ chối bởi đa số người chơi');
+        // Word rejected, last player who submitted the word loses
+        const lastSubmittedPlayerId = room.gameState.lastWordPlayerId;
+        
+        // Nếu không có ID người chơi đã lưu (hiếm khi xảy ra), dùng người chơi hiện tại
+        const playerIdToLose = lastSubmittedPlayerId || room.gameState.currentPlayerId;
+        
+        handlePlayerLose(roomId, playerIdToLose, 'Từ bị từ chối bởi đa số người chơi');
       } else {
         // Word accepted, continue game
         room.gameState.reports = [];
@@ -366,7 +374,7 @@ io.on('connection', (socket) => {
           
           rooms.delete(roomId);
         } else {
-          // If the disconnected player was the host, assign a new host
+          // Nếu người chơi rời đi là host, chỉ định host mới
           if (isHost) {
             const newHostIndex = 0; // Chọn người đầu tiên làm host mới
             room.hostId = room.players[newHostIndex].id;
@@ -441,7 +449,8 @@ io.on('connection', (socket) => {
       currentPlayerId: room.gameState.currentPlayerId,
       isPlaying: room.gameState.isPlaying,
       currentWord: room.gameState.currentWord,
-      messages: room.messages
+      messages: room.messages,
+      hostId: room.hostId
     });
   });
 
@@ -521,25 +530,36 @@ io.on('connection', (socket) => {
     // Xác nhận người chơi đang ở phòng chờ
     socket.join(roomId);
     
-    // Thêm trường để theo dõi người chơi đã quay về phòng chờ
+    // Đảm bảo có danh sách theo dõi người chơi đã quay lại
     if (!room.playersBackToRoom) {
       room.playersBackToRoom = new Set();
     }
     
-    // Đánh dấu người chơi này đã quay lại phòng chờ
+    // Đánh dấu người chơi đã quay lại
     room.playersBackToRoom.add(socket.id);
     
     console.log(`Player ${socket.id} back to waiting room. Total back: ${room.playersBackToRoom.size}/${room.players.length}`);
     
-    // Nếu đã kết thúc game và tất cả người chơi đều đã quay lại phòng chờ
-    if (room.gameState.isPlaying === false) {
-      // Kiểm tra xem tất cả người chơi đã quay lại phòng chờ chưa (sử dụng danh sách theo dõi)
-      if (room.playersBackToRoom.size === room.players.length) {
-        console.log(`All players in room ${roomId} are back to the waiting room`);
-        
-        // Gửi thông báo cho phòng
-        io.to(roomId).emit('all-players-back', {
-          message: 'Tất cả người chơi đã quay lại phòng chờ. Chủ phòng có thể bắt đầu game mới.'
+    // Tìm tên người chơi để thông báo
+    const player = room.players.find(p => p.id === socket.id);
+    const playerName = player ? player.name : 'Người chơi';
+    
+    // Gửi thông báo cho tất cả người chơi
+    io.to(roomId).emit('player-back-notification', {
+      playerId: socket.id,
+      playerName: playerName,
+      message: `${playerName} đã quay lại phòng chờ.`
+    });
+    
+    // Kiểm tra nếu tất cả người chơi đã quay lại và thông báo cho chủ phòng
+    if (room.playersBackToRoom.size === room.players.length) {
+      console.log(`All players in room ${roomId} are back to the waiting room`);
+      
+      // Thông báo chỉ gửi cho chủ phòng
+      const hostSocket = io.sockets.sockets.get(room.hostId);
+      if (hostSocket) {
+        hostSocket.emit('all-players-back', {
+          message: 'Tất cả người chơi đã quay lại phòng chờ. Bạn có thể bắt đầu game mới.'
         });
       }
     }
@@ -556,17 +576,16 @@ function selectNextPlayer(roomId) {
   const room = rooms.get(roomId);
   if (!room || !room.gameState.isPlaying || room.players.length < 2) return;
   
-  // Get players who are not the current player
-  const availablePlayers = room.players.filter(player => 
-    player.id !== room.gameState.currentPlayerId && !room.gameState.losers.includes(player.id)
+  // Lấy danh sách ID người chơi theo thứ tự đã xáo trộn
+  const shuffledPlayerIds = room.gameState.shuffledPlayerOrder || room.players.map(p => p.id);
+  
+  // Lọc ra những người chơi chưa bị loại, nhưng vẫn giữ thứ tự đã xáo trộn
+  const availablePlayerIds = shuffledPlayerIds.filter(playerId => 
+    !room.gameState.losers.includes(playerId)
   );
   
-  // If no available players, select from all players who haven't lost
-  const playersNotLost = room.players.filter(player => !room.gameState.losers.includes(player.id));
-  const selectFrom = availablePlayers.length > 0 ? availablePlayers : playersNotLost;
-  
   // Nếu không còn người chơi khả dụng, kết thúc trò chơi
-  if (selectFrom.length === 0) {
+  if (availablePlayerIds.length === 0) {
     room.gameState.isPlaying = false;
     io.to(roomId).emit('game-ended', {
       losers: room.gameState.losers,
@@ -575,9 +594,20 @@ function selectNextPlayer(roomId) {
     return;
   }
   
-  // Select random player
-  const randomIndex = Math.floor(Math.random() * selectFrom.length);
-  room.gameState.currentPlayerId = selectFrom[randomIndex].id;
+  // Lấy người chơi tiếp theo trong vòng, theo thứ tự đã xáo trộn
+  room.gameState.playerOrderIndex = (room.gameState.playerOrderIndex + 1) % availablePlayerIds.length;
+  room.gameState.currentPlayerId = availablePlayerIds[room.gameState.playerOrderIndex];
+  
+  // Xác định người chơi tiếp theo sau lượt này
+  const nextPlayerIndex = (room.gameState.playerOrderIndex + 1) % availablePlayerIds.length;
+  const nextPlayerId = availablePlayerIds[nextPlayerIndex];
+  const nextPlayerName = room.players.find(p => p.id === nextPlayerId)?.name || 'Người chơi tiếp theo';
+  
+  // Chuyển từ danh sách ID sang đối tượng người chơi đầy đủ để hiển thị
+  const playerOrder = availablePlayerIds.map(id => {
+    const player = room.players.find(p => p.id === id);
+    return { id, name: player?.name || 'Người chơi' };
+  });
   
   // Reset report votes for new turn
   room.gameState.reports = [];
@@ -593,7 +623,10 @@ function selectNextPlayer(roomId) {
   // Notify clients about next player and thời gian còn lại
   io.to(roomId).emit('next-player', {
     currentPlayerId: room.gameState.currentPlayerId,
-    timeRemaining: turnTime
+    nextPlayerId: nextPlayerId,
+    nextPlayerName: nextPlayerName,
+    timeRemaining: turnTime,
+    playerOrder: playerOrder
   });
   
   // Thiết lập hàm định kỳ gửi thời gian còn lại
@@ -643,38 +676,36 @@ function handlePlayerLose(roomId, playerId, reason) {
     losers: room.gameState.losers
   });
   
-  // Check if only one player remains
-  const remainingPlayers = room.players.filter(p => 
-    !room.gameState.losers.includes(p.id)
-  );
+  // Kết thúc game ngay khi có người thua
+  room.gameState.isPlaying = false;
   
-  if (remainingPlayers.length <= 1) {
-    // End the game
-    room.gameState.isPlaying = false;
-    
-    // Khởi tạo/xóa danh sách người chơi đã quay lại phòng chờ
-    if (!room.playersBackToRoom) {
-      room.playersBackToRoom = new Set();
-    } else {
-      room.playersBackToRoom.clear();
-    }
-    
-    // Sắp xếp bảng xếp hạng: người có loseCount thấp nhất xếp hạng cao nhất
-    const rankings = [...room.players].sort((a, b) => a.loseCount - b.loseCount);
-    
-    io.to(roomId).emit('game-ended', {
-      losers: room.gameState.losers,
-      rankings: rankings
-    });
-    
-    // Reset for next game
-    room.gameState.losers = [];
-    room.gameState.currentWord = '';
-    room.gameState.reports = [];
+  // Reset current player data để không hiển thị thông báo lượt chơi nữa
+  room.gameState.currentPlayerId = null;
+  room.gameState.playerOrderIndex = -1;
+  
+  // Khởi tạo/xóa danh sách người chơi đã quay lại phòng chờ
+  if (!room.playersBackToRoom) {
+    room.playersBackToRoom = new Set();
   } else {
-    // Continue with next player
-    selectNextPlayer(roomId);
+    room.playersBackToRoom.clear();
   }
+  
+  // Sắp xếp bảng xếp hạng: người có loseCount thấp nhất xếp hạng cao nhất
+  const rankings = [...room.players].sort((a, b) => a.loseCount - b.loseCount);
+  
+  // Gửi cập nhật danh sách người chơi
+  io.to(roomId).emit('players-update', room.players);
+  
+  // Gửi thông báo game kết thúc
+  io.to(roomId).emit('game-ended', {
+    losers: room.gameState.losers,
+    rankings: rankings
+  });
+  
+  // Reset for next game
+  room.gameState.losers = [];
+  room.gameState.currentWord = '';
+  room.gameState.reports = [];
 }
 
 // API endpoints

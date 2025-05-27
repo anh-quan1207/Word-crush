@@ -118,4 +118,4 @@ function ChatBox({ messages, onSendMessage, compact = false }: ChatBoxProps) {
   );
 }
 
-export default ChatBox; 
+export default ChatBox;

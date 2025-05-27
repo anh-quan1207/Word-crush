@@ -4,20 +4,21 @@ interface Player {
   id: string;
   name: string;
   loseCount: number;
+  isBackToRoom?: boolean;
 }
 
 interface PlayersListProps {
   players: Player[];
   hostId?: string;
-  currentPlayerId?: string;
-  scores?: Player[];
 }
 
-function PlayersList({ players, hostId, currentPlayerId, scores }: PlayersListProps) {
+function PlayersList({ players, hostId }: PlayersListProps) {
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
       <div className="p-4 bg-purple-50 border-b">
-        <h3 className="text-lg font-semibold text-purple-800">Người chơi ({players.length})</h3>
+        <h3 className="text-lg font-semibold text-purple-800">
+          Người chơi ({players.length})
+        </h3>
       </div>
       
       <div className="p-2">
@@ -28,10 +29,7 @@ function PlayersList({ players, hostId, currentPlayerId, scores }: PlayersListPr
         ) : (
           <ul className="divide-y divide-gray-200">
             {players.map((player) => (
-              <li 
-                key={player.id} 
-                className={`py-3 px-2 flex items-center justify-between ${currentPlayerId === player.id ? 'bg-green-50' : ''}`}
-              >
+              <li key={player.id} className="py-3 px-2 flex items-center justify-between">
                 <div className="flex items-center">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-400 to-indigo-500 flex items-center justify-center text-white font-bold">
                     {player.name.charAt(0).toUpperCase()}
@@ -41,20 +39,13 @@ function PlayersList({ players, hostId, currentPlayerId, scores }: PlayersListPr
                     {player.id === hostId && (
                       <span className="ml-2 text-yellow-500" title="Chủ phòng">👑</span>
                     )}
-                    {currentPlayerId === player.id && (
-                      <span className="ml-2 text-green-500" title="Đang đánh">🎮</span>
-                    )}
                   </span>
                 </div>
-                {scores ? (
-                  <span className="text-sm text-red-500">
-                    {scores.find(s => s.id === player.id)?.loseCount || 0} thua
-                  </span>
-                ) : (
-                  player.loseCount > 0 && (
-                    <span className="text-sm text-red-500">{player.loseCount} thua</span>
-                  )
-                )}
+                <div className="flex items-center">
+                  {player.loseCount > 0 && (
+                    <span className="text-sm text-red-500 mr-2">{player.loseCount} thua</span>
+                  )}
+                </div>
               </li>
             ))}
           </ul>

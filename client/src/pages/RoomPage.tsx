@@ -8,6 +8,7 @@ interface Player {
   id: string;
   name: string;
   loseCount: number;
+  isBackToRoom?: boolean;
 }
 
 interface RoomParams {
@@ -32,6 +33,7 @@ function RoomPage() {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [isHost, setIsHost] = useState(false);
+  const [roomHostId, setRoomHostId] = useState('');
   const [gameMessage, setGameMessage] = useState('');
 
   useEffect(() => {
@@ -57,6 +59,10 @@ function RoomPage() {
         });
         setPlayers(Array.from(uniquePlayersMap.values()));
         setMessages(response.room.messages);
+        
+        if (response.room.hostId) {
+          setRoomHostId(response.room.hostId);
+        }
         
         if (response.isHost !== undefined) {
           setIsHost(response.isHost);
@@ -98,6 +104,8 @@ function RoomPage() {
     });
 
     socket.on('host-changed', (data: { newHostId: string, newHostName: string, message: string }) => {
+      setRoomHostId(data.newHostId);
+      
       if (data.newHostId === socket.id) {
         setIsHost(true);
       }
@@ -115,6 +123,11 @@ function RoomPage() {
       setTimeout(() => setGameMessage(''), 5000);
     });
 
+    socket.on('player-back-notification', (data: { playerId: string, playerName: string, message: string }) => {
+      setGameMessage(data.message);
+      setTimeout(() => setGameMessage(''), 3000);
+    });
+
     return () => {
       socket.off('players-update');
       socket.off('new-message');
@@ -124,6 +137,7 @@ function RoomPage() {
       socket.off('host-changed');
       socket.off('player-left');
       socket.off('all-players-back');
+      socket.off('player-back-notification');
     };
   }, [socket, roomId, navigate]);
 
@@ -145,10 +159,52 @@ function RoomPage() {
   };
 
   const copyRoomId = () => {
-    if (roomId) {
-      navigator.clipboard.writeText(roomId);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+    if (!roomId) return;
+    
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(roomId)
+          .then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          })
+          .catch(err => {
+            console.error('Không thể sao chép: ', err);
+            copyToClipboardFallback(roomId);
+          });
+      } else {
+        copyToClipboardFallback(roomId);
+      }
+    } catch (err) {
+      console.error('Lỗi khi sao chép: ', err);
+      alert(`Không thể tự động sao chép. Vui lòng sao chép mã phòng thủ công: ${roomId}`);
+    }
+  };
+
+  const copyToClipboardFallback = (text: string) => {
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      
+      if (successful) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } else {
+        alert(`Không thể tự động sao chép. Vui lòng sao chép mã phòng thủ công: ${roomId}`);
+      }
+    } catch (err) {
+      console.error('Lỗi khi sử dụng phương án dự phòng: ', err);
+      alert(`Không thể tự động sao chép. Vui lòng sao chép mã phòng thủ công: ${roomId}`);
     }
   };
 
@@ -163,20 +219,6 @@ function RoomPage() {
     return (
       <div className="flex justify-center items-center h-full">
         <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-purple-500"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-white rounded-xl shadow-md p-6 text-center">
-        <div className="text-red-500 mb-4">{error}</div>
-        <button
-          className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
-          onClick={() => navigate('/')}
-        >
-          Quay lại trang chủ
-        </button>
       </div>
     );
   }
@@ -240,7 +282,7 @@ function RoomPage() {
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-1">
-            <PlayersList players={players} hostId={isHost ? socket?.id : undefined} />
+            <PlayersList players={players} hostId={roomHostId} />
           </div>
           <div className="md:col-span-2">
             <ChatBox messages={messages} onSendMessage={sendMessage} />
