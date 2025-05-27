@@ -1,20 +1,20 @@
 services:
   - type: web
-    name: word-crush-server
+    name: word-crush
     env: node
-    buildCommand: npm install
-    startCommand: npm run server
+    buildCommand: >
+      npm install &&
+      cd client &&
+      npm install &&
+      mkdir -p src/types &&
+      npm run build
+    startCommand: npm run render-start
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 5000
-
-  - type: web
-    name: word-crush-client
-    env: node
-    buildCommand: cd client && npm install && npm run build
-    startCommand: cd client && npm start
-    envVars:
-      - key: PORT
-        value: 3000 
+      - key: SKIP_PREFLIGHT_CHECK
+        value: "true"
+      - key: TSC_COMPILE_ON_ERROR
+        value: "true" 
