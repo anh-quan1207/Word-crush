@@ -22,11 +22,13 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   const [connected, setConnected] = useState<boolean>(false);
 
   useEffect(() => {
-    // Lấy hostname của window để kết nối
+    // Lấy protocol và hostname của window để kết nối
+    const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
     const hostname = window.location.hostname;
-    // Kết nối đến server socket.io (sử dụng hostname hiện tại thay vì hardcode localhost)
-    const socketInstance = io(`http://${hostname}:5000`, {
+    // Kết nối đến server socket.io với protocol tương ứng
+    const socketInstance = io(`${protocol}://${hostname}`, {
       withCredentials: true, // Bật withCredentials để hỗ trợ CORS
+      path: '/socket.io', // Đường dẫn mặc định
     });
 
     // Lắng nghe sự kiện kết nối
@@ -39,6 +41,11 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     socketInstance.on('disconnect', () => {
       console.log('Disconnected from server');
       setConnected(false);
+    });
+
+    // Lắng nghe lỗi kết nối
+    socketInstance.on('connect_error', (error) => {
+      console.log('Connection error:', error);
     });
 
     // Lưu instance socket
