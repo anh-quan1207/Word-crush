@@ -22,13 +22,22 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    // Lấy protocol và hostname của window để kết nối
-    const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
-    const hostname = window.location.hostname;
-    // Kết nối đến server socket.io với protocol tương ứng và cổng 5000
-    const socketInstance = io(`${protocol}://${hostname}:5000`, {
-      withCredentials: true, // Bật withCredentials để hỗ trợ CORS
-      path: '/socket.io', // Đường dẫn mặc định
+    // Xác định URL kết nối socket dựa trên môi trường
+    let socketUrl;
+    
+    if (process.env.NODE_ENV === 'production') {
+      // Trong môi trường production, sử dụng domain hiện tại mà không cần chỉ định port
+      socketUrl = window.location.origin;
+    } else {
+      // Trong môi trường development, sử dụng cổng 5000
+      socketUrl = 'http://localhost:5000';
+    }
+    
+    console.log('Connecting to socket server at:', socketUrl);
+    
+    const socketInstance = io(socketUrl, {
+      withCredentials: true,
+      path: '/socket.io',
     });
 
     // Lắng nghe sự kiện kết nối
