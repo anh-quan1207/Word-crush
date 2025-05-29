@@ -87,6 +87,13 @@ io.on('connection', (socket) => {
     room.players.push(player);
     socket.join(roomId);
     
+    // Nếu game đã kết thúc và có danh sách playersBackToRoom, 
+    // tự động thêm người chơi mới vào playersBackToRoom
+    if (!room.gameState.isPlaying && room.playersBackToRoom) {
+      room.playersBackToRoom.add(socket.id);
+      console.log(`New player ${socket.id} (${playerName}) added to back-to-room list. Total: ${room.playersBackToRoom.size}/${room.players.length}`);
+    }
+    
     io.to(roomId).emit('players-update', room.players);
     io.to(roomId).emit('messages-update', room.messages);
     
@@ -131,11 +138,26 @@ io.on('connection', (socket) => {
     }
     
     // Kiểm tra tất cả người chơi đã quay lại phòng chờ
-    if (room.playersBackToRoom && room.playersBackToRoom.size < room.players.length) {
+    if (room.playersBackToRoom) {
+      // Kiểm tra xem có người chơi nào chưa quay lại phòng chờ không
       const missingPlayers = room.players.filter(p => !room.playersBackToRoom.has(p.id));
-      const missingNames = missingPlayers.map(p => p.name).join(', ');
-      socket.emit('error-message', { message: `Vui lòng đợi ${missingNames} quay lại phòng chờ` });
-      return;
+      
+      if (missingPlayers.length > 0) {
+        const missingNames = missingPlayers.map(p => p.name).join(', ');
+        socket.emit('error-message', { message: `Vui lòng đợi ${missingNames} quay lại phòng chờ` });
+        
+        // Cập nhật cho người chơi biết họ cần quay lại phòng chờ
+        missingPlayers.forEach(player => {
+          const playerSocket = io.sockets.sockets.get(player.id);
+          if (playerSocket) {
+            playerSocket.emit('error-message', { 
+              message: 'Bạn cần quay lại phòng chờ để game mới có thể bắt đầu. Vui lòng nhấn "Quay lại phòng chờ".' 
+            });
+          }
+        });
+        
+        return;
+      }
     }
     
     // Reset game state
@@ -351,28 +373,31 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);
     
-    // Find all rooms the player is in
+    // Tìm phòng mà người chơi đang tham gia
+    let roomIdFound = null;
+    
     for (const [roomId, room] of rooms.entries()) {
       const playerIndex = room.players.findIndex(p => p.id === socket.id);
-      
       if (playerIndex !== -1) {
-        const isHost = room.hostId === socket.id;
-        const playerName = room.players[playerIndex].name;
+        roomIdFound = roomId;
         
-        // Remove player from room
+        // Lấy thông tin người chơi để sử dụng sau khi xóa
+        const playerName = room.players[playerIndex].name;
+        const isHost = room.hostId === socket.id;
+        
+        // Xóa người chơi khỏi danh sách
         room.players.splice(playerIndex, 1);
         
+        // Xóa người chơi khỏi danh sách playersBackToRoom nếu có
+        if (room.playersBackToRoom && room.playersBackToRoom.has(socket.id)) {
+          room.playersBackToRoom.delete(socket.id);
+          console.log(`Player ${socket.id} removed from back-to-room list. Total: ${room.playersBackToRoom.size}/${room.players.length}`);
+        }
+        
+        // Nếu phòng trống, xóa phòng
         if (room.players.length === 0) {
-          // If room is empty, remove it
-          console.log(`Room ${roomId} is empty, removing it`);
-          
-          // Dừng timer nếu có
-          if (room.gameState.timer) {
-            clearInterval(room.gameState.timer);
-            room.gameState.timer = null;
-          }
-          
           rooms.delete(roomId);
+          console.log(`Room ${roomId} deleted because it's empty`);
         } else {
           // Nếu người chơi rời đi là host, chỉ định host mới
           if (isHost) {
@@ -462,26 +487,25 @@ io.on('connection', (socket) => {
     const playerIndex = room.players.findIndex(p => p.id === socket.id);
     if (playerIndex === -1) return;
     
-    const isHost = room.hostId === socket.id;
+    // Lấy thông tin người chơi để sử dụng sau khi xóa
     const playerName = room.players[playerIndex].name;
-    
-    // Rời khỏi phòng socket
-    socket.leave(roomId);
+    const isHost = room.hostId === socket.id;
     
     // Xóa người chơi khỏi danh sách
     room.players.splice(playerIndex, 1);
     
+    // Xóa người chơi khỏi danh sách playersBackToRoom nếu có
+    if (room.playersBackToRoom && room.playersBackToRoom.has(socket.id)) {
+      room.playersBackToRoom.delete(socket.id);
+      console.log(`Player ${socket.id} removed from back-to-room list. Total: ${room.playersBackToRoom.size}/${room.players.length}`);
+    }
+    
+    socket.leave(roomId);
+    
+    // Nếu phòng trống, xóa phòng
     if (room.players.length === 0) {
-      // Nếu phòng trống, xóa phòng
-      console.log(`Room ${roomId} is empty, removing it`);
-      
-      // Dừng timer nếu có
-      if (room.gameState.timer) {
-        clearInterval(room.gameState.timer);
-        room.gameState.timer = null;
-      }
-      
       rooms.delete(roomId);
+      console.log(`Room ${roomId} deleted because it's empty`);
     } else {
       // Nếu người chơi rời đi là host, chỉ định host mới
       if (isHost) {

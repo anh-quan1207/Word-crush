@@ -24,11 +24,11 @@ interface Message {
 }
 
 function RoomPage() {
-  const { roomId } = useParams<keyof RoomParams>();
+  const { roomId } = useParams();
   const { socket } = useSocket();
   const navigate = useNavigate();
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [players, setPlayers] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
@@ -45,7 +45,7 @@ function RoomPage() {
       return;
     }
 
-    socket.emit('join-room', { roomId, playerName }, (response: { success: boolean; message?: string; room?: any; isHost?: boolean }) => {
+    socket.emit('join-room', { roomId, playerName }, (response: any) => {
       setLoading(false);
       if (!response.success) {
         setError(response.message || 'Không thể tham gia phòng');
@@ -53,8 +53,8 @@ function RoomPage() {
       }
 
       if (response.room) {
-        const uniquePlayersMap = new Map<string, Player>();
-        response.room.players.forEach((player: Player) => {
+        const uniquePlayersMap = new Map();
+        response.room.players.forEach((player: any) => {
           uniquePlayersMap.set(player.id, player);
         });
         setPlayers(Array.from(uniquePlayersMap.values()));
@@ -78,19 +78,19 @@ function RoomPage() {
       }
     });
 
-    socket.on('players-update', (updatedPlayers: Player[]) => {
-      const uniquePlayersMap = new Map<string, Player>();
+    socket.on('players-update', (updatedPlayers: any) => {
+      const uniquePlayersMap = new Map();
       updatedPlayers.forEach(player => {
         uniquePlayersMap.set(player.id, player);
       });
       setPlayers(Array.from(uniquePlayersMap.values()));
     });
 
-    socket.on('new-message', (message: Message) => {
+    socket.on('new-message', (message: any) => {
       setMessages(prev => [...prev, message]);
     });
 
-    socket.on('messages-update', (updatedMessages: Message[]) => {
+    socket.on('messages-update', (updatedMessages: any) => {
       setMessages(updatedMessages);
     });
 
@@ -98,12 +98,12 @@ function RoomPage() {
       navigate(`/game/${roomId}`);
     });
 
-    socket.on('error-message', (data: { message: string }) => {
+    socket.on('error-message', (data: any) => {
       setError(data.message);
       setTimeout(() => setError(''), 3000);
     });
 
-    socket.on('host-changed', (data: { newHostId: string, newHostName: string, message: string }) => {
+    socket.on('host-changed', (data: any) => {
       setRoomHostId(data.newHostId);
       
       if (data.newHostId === socket.id) {
@@ -113,17 +113,17 @@ function RoomPage() {
       setTimeout(() => setGameMessage(''), 5000);
     });
 
-    socket.on('player-left', (data: { playerId: string, playerName: string, message: string }) => {
+    socket.on('player-left', (data: any) => {
       setGameMessage(data.message);
       setTimeout(() => setGameMessage(''), 5000);
     });
 
-    socket.on('all-players-back', (data: { message: string }) => {
+    socket.on('all-players-back', (data: any) => {
       setGameMessage(data.message);
       setTimeout(() => setGameMessage(''), 5000);
     });
 
-    socket.on('player-back-notification', (data: { playerId: string, playerName: string, message: string }) => {
+    socket.on('player-back-notification', (data: any) => {
       setGameMessage(data.message);
       setTimeout(() => setGameMessage(''), 3000);
     });

@@ -29,41 +29,41 @@ interface PlayerOrder {
 }
 
 function GamePage() {
-  const { roomId } = useParams<{ roomId: string }>();
+  const { roomId } = useParams();
   const { socket } = useSocket();
   const navigate = useNavigate();
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [currentPlayerId, setCurrentPlayerId] = useState<string>('');
-  const [nextPlayerId, setNextPlayerId] = useState<string>('');
-  const [nextPlayerName, setNextPlayerName] = useState<string>('');
-  const [isMyTurn, setIsMyTurn] = useState<boolean>(false);
-  const [inputWord, setInputWord] = useState<string>('');
-  const [currentWord, setCurrentWord] = useState<string>('');
-  const [wordHistory, setWordHistory] = useState<WordHistory[]>([]);
-  const [lastPlayerId, setLastPlayerId] = useState<string>('');
-  const [gameEnded, setGameEnded] = useState<boolean>(false);
-  const [losers, setLosers] = useState<string[]>([]);
-  const [rankings, setRankings] = useState<Player[]>([]);
-  const [gameMessage, setGameMessage] = useState<string>('');
-  const [error, setError] = useState<string>('');
-  const [showReportModal, setShowReportModal] = useState<boolean>(false);
-  const [reports, setReports] = useState<ReportVote[]>([]);
-  const [timeRemaining, setTimeRemaining] = useState<number>(30);
-  const [playerOrder, setPlayerOrder] = useState<PlayerOrder[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const [players, setPlayers] = useState([]);
+  const [currentPlayerId, setCurrentPlayerId] = useState('');
+  const [nextPlayerId, setNextPlayerId] = useState('');
+  const [nextPlayerName, setNextPlayerName] = useState('');
+  const [isMyTurn, setIsMyTurn] = useState(false);
+  const [inputWord, setInputWord] = useState('');
+  const [currentWord, setCurrentWord] = useState('');
+  const [wordHistory, setWordHistory] = useState([]);
+  const [lastPlayerId, setLastPlayerId] = useState('');
+  const [gameEnded, setGameEnded] = useState(false);
+  const [losers, setLosers] = useState([]);
+  const [rankings, setRankings] = useState([]);
+  const [gameMessage, setGameMessage] = useState('');
+  const [error, setError] = useState('');
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reports, setReports] = useState([]);
+  const [timeRemaining, setTimeRemaining] = useState(30);
+  const [playerOrder, setPlayerOrder] = useState([]);
+  const timerRef = useRef(null);
 
   const myPlayerId = socket?.id;
 
   useEffect(() => {
     if (!socket) return;
 
-    socket.emit('check-player-in-room', { roomId }, (response: { success: boolean; message?: string }) => {
+    socket.emit('check-player-in-room', { roomId }, (response: any) => {
       if (!response.success) {
         navigate(`/room/${roomId}`);
       }
     });
 
-    socket.emit('get-room-info', { roomId }, (response: { success: boolean; players?: Player[]; currentPlayerId?: string }) => {
+    socket.emit('get-room-info', { roomId }, (response: any) => {
       if (response.success && response.players) {
         setPlayers(response.players);
         if (response.currentPlayerId) {
@@ -73,7 +73,7 @@ function GamePage() {
       }
     });
 
-    socket.on('game-started', (data: { currentPlayerId: string, playerOrder: PlayerOrder[] }) => {
+    socket.on('game-started', (data: any) => {
       setCurrentPlayerId(data.currentPlayerId);
       setPlayerOrder(data.playerOrder);
       setIsMyTurn(data.currentPlayerId === socket.id);
@@ -83,21 +83,15 @@ function GamePage() {
       setLosers([]);
     });
 
-    socket.on('players-update', (updatedPlayers: Player[]) => {
-      const uniquePlayersMap = new Map<string, Player>();
+    socket.on('players-update', (updatedPlayers: any) => {
+      const uniquePlayersMap = new Map();
       updatedPlayers.forEach(player => {
         uniquePlayersMap.set(player.id, player);
       });
       setPlayers(Array.from(uniquePlayersMap.values()));
     });
 
-    socket.on('next-player', (data: { 
-      currentPlayerId: string, 
-      nextPlayerId: string, 
-      nextPlayerName: string, 
-      timeRemaining: number,
-      playerOrder: PlayerOrder[]
-    }) => {
+    socket.on('next-player', (data: any) => {
       console.log('Người chơi tiếp theo:', data.currentPlayerId);
       setCurrentPlayerId(data.currentPlayerId);
       setNextPlayerId(data.nextPlayerId);
@@ -110,18 +104,18 @@ function GamePage() {
       const currentPlayer = players.find(p => p.id === data.currentPlayerId);
       if (currentPlayer) {
         if (data.currentPlayerId === socket.id) {
-          setGameMessage(`Đến lượt của bạn! Tiếp theo sẽ là ${data.nextPlayerName}`);
+          // setGameMessage(`Đến lượt của bạn! Tiếp theo sẽ là ${data.nextPlayerName}`);
         } else {
-          setGameMessage(`Đến lượt của ${currentPlayer.name}. Tiếp theo sẽ là ${data.nextPlayerName}`);
+          // setGameMessage(`Đến lượt của ${currentPlayer.name}. Tiếp theo sẽ là ${data.nextPlayerName}`);
         }
       }
     });
     
-    socket.on('timer-update', (data: { timeRemaining: number }) => {
+    socket.on('timer-update', (data: any) => {
       setTimeRemaining(data.timeRemaining);
     });
 
-    socket.on('word-update', (data: { word: string; playerId: string }) => {
+    socket.on('word-update', (data: any) => {
       setWordHistory(prev => [...prev, { word: data.word, playerId: data.playerId }]);
       
       setCurrentWord(data.word);
@@ -129,7 +123,7 @@ function GamePage() {
       console.log(`Word updated: ${data.word} by player ${data.playerId}`);
     });
 
-    socket.on('player-lost', (data: { playerId: string; reason: string; losers: string[] }) => {
+    socket.on('player-lost', (data: any) => {
       setLosers(data.losers);
       
       const player = players.find(p => p.id === data.playerId);
@@ -140,16 +134,16 @@ function GamePage() {
           const currentPlayer = players.find(p => p.id === currentPlayerId);
           if (currentPlayer) {
             if (currentPlayerId === socket.id) {
-              setGameMessage(`Đến lượt của bạn! Tiếp theo sẽ là ${nextPlayerName}`);
+              // setGameMessage(`Đến lượt của bạn! Tiếp theo sẽ là ${nextPlayerName}`);
             } else {
-              setGameMessage(`Đến lượt của ${currentPlayer.name}. Tiếp theo sẽ là ${nextPlayerName}`);
+              // setGameMessage(`Đến lượt của ${currentPlayer.name}. Tiếp theo sẽ là ${nextPlayerName}`);
             }
           }
         }, 3000);
       }
     });
 
-    socket.on('game-ended', (data: { losers: string[]; rankings: Player[], winner?: Player }) => {
+    socket.on('game-ended', (data: any) => {
       setGameEnded(true);
       setRankings(data.rankings);
       
@@ -171,12 +165,12 @@ function GamePage() {
       }, 10000);
     });
 
-    socket.on('error-message', (data: { message: string }) => {
+    socket.on('error-message', (data: any) => {
       setError(data.message);
       setTimeout(() => setError(''), 3000);
     });
 
-    socket.on('report-started', (data: { reports: ReportVote[]; word: string }) => {
+    socket.on('report-started', (data: any) => {
       console.log("Received report-started event", data);
       setShowReportModal(true);
       setReports(data.reports);
@@ -187,11 +181,11 @@ function GamePage() {
       }
     });
 
-    socket.on('report-update', (data: { reports: ReportVote[]; word: string }) => {
+    socket.on('report-update', (data: any) => {
       setReports(data.reports);
     });
 
-    socket.on('report-finished', (data: { accepted: boolean }) => {
+    socket.on('report-finished', (data: any) => {
       setShowReportModal(false);
       setReports([]);
       
@@ -199,9 +193,9 @@ function GamePage() {
       const currentPlayer = players.find(p => p.id === currentPlayerId);
       if (currentPlayer) {
         if (currentPlayerId === socket.id) {
-          setGameMessage(`Đến lượt của bạn! Tiếp theo sẽ là ${nextPlayerName}`);
+          // setGameMessage(`Đến lượt của bạn! Tiếp theo sẽ là ${nextPlayerName}`);
         } else {
-          setGameMessage(`Đến lượt của ${currentPlayer.name}. Tiếp theo sẽ là ${nextPlayerName}`);
+          // setGameMessage(`Đến lượt của ${currentPlayer.name}. Tiếp theo sẽ là ${nextPlayerName}`);
         }
       }
     });
@@ -265,6 +259,17 @@ function GamePage() {
       navigate(`/room/${roomId}`);
     }
   };
+
+  // Tự động quay lại phòng chờ sau khi game kết thúc
+  useEffect(() => {
+    if (gameEnded) {
+      const timer = setTimeout(() => {
+        backToRoom();
+      }, 10000); // Tự động sau 10 giây
+      
+      return () => clearTimeout(timer);
+    }
+  }, [gameEnded]);
 
   if (gameEnded) {
     return (

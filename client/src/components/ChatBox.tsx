@@ -16,7 +16,7 @@ interface ChatBoxProps {
 
 function ChatBox({ messages, onSendMessage, compact = false }: ChatBoxProps) {
   const [newMessage, setNewMessage] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef(null);
   // Giới hạn số ký tự
   const MAX_MESSAGE_LENGTH = 100;
 
@@ -29,7 +29,7 @@ function ChatBox({ messages, onSendMessage, compact = false }: ChatBoxProps) {
     scrollToBottom();
   }, [messages]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: any) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
 
@@ -38,7 +38,7 @@ function ChatBox({ messages, onSendMessage, compact = false }: ChatBoxProps) {
   };
 
   // Xử lý khi nhập tin nhắn
-  const handleMessageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMessageChange = (e: any) => {
     const value = e.target.value;
     // Chỉ lấy 100 ký tự đầu tiên
     if (value.length <= MAX_MESSAGE_LENGTH) {

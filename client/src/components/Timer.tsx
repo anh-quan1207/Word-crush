@@ -8,7 +8,7 @@ interface TimerProps {
 
 function Timer({ seconds, isActive, onTimeout }: TimerProps) {
   const [timeLeft, setTimeLeft] = useState(seconds);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef(null);
 
   useEffect(() => {
     // Cập nhật thời gian khi seconds thay đổi
