@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSocket } from '../contexts/SocketContext';
+import { useTheme } from '../contexts/ThemeContext';
 import ChatBox from '../components/ChatBox';
 import PlayersList from '../components/PlayersList';
+import ThemeToggleButton from '../components/ThemeToggleButton';
 
 interface Player {
   id: string;
@@ -26,6 +28,7 @@ interface Message {
 function RoomPage() {
   const { roomId } = useParams();
   const { socket } = useSocket();
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const [players, setPlayers] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -223,44 +226,65 @@ function RoomPage() {
     );
   }
 
+  // Xác định màu sắc dựa trên theme
+  const containerClass = theme === 'vscode' 
+    ? 'bg-[#2D2D2D] text-gray-100 border border-[#3C3C3C]' 
+    : 'bg-white';
+
+  const headerClass = theme === 'vscode' 
+    ? 'text-blue-300' 
+    : 'text-purple-700';
+
   return (
-    <div className="bg-white rounded-xl shadow-md overflow-hidden">
+    <div className={`${containerClass} rounded-xl shadow-md overflow-hidden`}>
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 m-4 rounded relative">
+        <div className={theme === 'vscode' 
+          ? "bg-red-900/30 border border-red-800/50 text-red-300 px-4 py-3 m-4 rounded relative"
+          : "bg-red-100 border border-red-400 text-red-700 px-4 py-3 m-4 rounded relative"
+        }>
           <span className="block sm:inline">{error}</span>
         </div>
       )}
       
       {gameMessage && (
-        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 m-4 rounded relative">
+        <div className={theme === 'vscode' 
+          ? "bg-blue-900/30 border border-blue-800/50 text-blue-300 px-4 py-3 m-4 rounded relative"
+          : "bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 m-4 rounded relative"
+        }>
           <span className="block sm:inline">{gameMessage}</span>
         </div>
       )}
 
       <div className="p-6">
         <div className="flex flex-col md:flex-row justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-purple-700 mb-4 md:mb-0">Phòng chờ</h1>
+          <div className="flex items-center mb-4 md:mb-0">
+            <h1 className={`text-3xl font-bold ${headerClass}`}>Phòng chờ</h1>
+            <ThemeToggleButton className="ml-3" />
+          </div>
           <div className="flex items-center space-x-4">
-            <div className="bg-gray-100 p-2 rounded-lg flex items-center">
-              <span className="text-gray-600 mr-2">Mã phòng:</span>
-              <span className="font-mono font-bold text-lg">{roomId}</span>
+            <div className={`${theme === 'vscode' ? 'bg-[#37373D] border-[#3C3C3C] border' : 'bg-gray-100'} p-2 rounded-lg flex items-center`}>
+              <span className={theme === 'vscode' ? 'text-gray-300 mr-2' : 'text-gray-600 mr-2'}>Mã phòng:</span>
+              <span className={`font-mono font-bold text-lg ${theme === 'vscode' ? 'text-white' : ''}`}>{roomId}</span>
               <button 
-                className="ml-2 p-1 text-gray-500 hover:text-indigo-600" 
+                className={`ml-2 p-1 ${theme === 'vscode' ? 'text-gray-300 hover:text-blue-400' : 'text-gray-500 hover:text-indigo-600'}`} 
                 onClick={copyRoomId}
                 title="Sao chép mã phòng"
               >
-                {copied ? 'Đã sao chép!' : '📋'}
+                {copied ? '✓' : 
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>}
               </button>
             </div>
             <button
-              className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300"
+              className={`${theme === 'vscode' ? 'bg-red-700 hover:bg-red-800' : 'bg-red-600 hover:bg-red-700'} text-white font-bold py-2 px-4 rounded transition duration-300`}
               onClick={leaveRoom}
             >
               Thoát phòng
             </button>
             {isHost && (
               <button
-                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded transition duration-300"
+                className={`${theme === 'vscode' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'} text-white font-bold py-2 px-6 rounded transition duration-300`}
                 onClick={startGame}
                 disabled={players.length < 2}
               >
@@ -268,12 +292,12 @@ function RoomPage() {
               </button>
             )}
             {!isHost && players.length < 2 && (
-              <div className="text-amber-600 font-medium">
+              <div className={`${theme === 'vscode' ? 'text-amber-400' : 'text-amber-600'} font-medium`}>
                 Chờ thêm người chơi...
               </div>
             )}
             {!isHost && players.length >= 2 && (
-              <div className="text-amber-600 font-medium">
+              <div className={`${theme === 'vscode' ? 'text-amber-400' : 'text-amber-600'} font-medium`}>
                 Chờ chủ phòng bắt đầu...
               </div>
             )}
