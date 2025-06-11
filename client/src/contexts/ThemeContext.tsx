@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 
-type Theme = 'pink' | 'dark' | 'vscode';
+type Theme = 'pink' | 'dark';
 
 interface ThemeContextType {
   theme: Theme;
@@ -20,7 +20,6 @@ export const ThemeProvider = ({ children }) => {
   const toggleTheme = () => {
     setTheme(currentTheme => {
       if (currentTheme === 'pink') return 'dark';
-      if (currentTheme === 'dark') return 'vscode';
       return 'pink';
     });
   };

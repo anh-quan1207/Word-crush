@@ -14,13 +14,8 @@ function HomePage() {
   const [error, setError] = useState('');
 
   // Xác định màu nền cho khung game dựa trên theme
-  const containerClass = theme === 'vscode' 
-    ? 'bg-[#2D2D2D] text-gray-100' 
-    : 'bg-white text-gray-700';
-
-  const headerClass = theme === 'vscode' 
-    ? 'text-blue-300' 
-    : 'text-purple-700';
+  const containerClass = 'bg-white text-gray-700';
+  const headerClass = 'text-purple-700';
 
   // Tạo phòng mới
   const createRoom = () => {
@@ -70,31 +65,28 @@ function HomePage() {
   };
 
   return (
-    <div className={`max-w-md mx-auto ${containerClass} rounded-xl shadow-md overflow-hidden md:max-w-2xl p-6 relative ${theme === 'vscode' ? 'border border-[#3C3C3C]' : ''}`}>
+    <div className={`max-w-md mx-auto ${containerClass} rounded-xl shadow-md overflow-hidden md:max-w-2xl p-6 relative`}>
       <ThemeToggleButton className="absolute top-4 right-4" />
       
       <div className="text-center mb-8">
         <h1 className={`text-4xl font-bold ${headerClass} mb-2`}>Word Crush</h1>
-        <p className={theme === 'vscode' ? 'text-gray-300' : 'text-gray-600'}>Game nối từ nhiều người chơi</p>
+        <p className="text-gray-600">Game nối từ nhiều người chơi</p>
       </div>
 
       {error && (
-        <div className={theme === 'vscode' 
-          ? "bg-red-900/30 border border-red-800/50 text-red-300 px-4 py-3 rounded mb-4"
-          : "bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4"
-        }>
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           {error}
         </div>
       )}
 
       <div className="mb-6">
-        <label htmlFor="playerName" className={`block ${theme === 'vscode' ? 'text-gray-300' : 'text-gray-700'} text-sm font-bold mb-2`}>
+        <label htmlFor="playerName" className="block text-gray-700 text-sm font-bold mb-2">
           Tên của bạn
         </label>
         <input
           type="text"
           id="playerName"
-          className={`shadow appearance-none border rounded w-full py-2 px-3 ${theme === 'vscode' ? 'bg-[#3C3C3C] text-gray-100 border-[#6B6B6B]' : 'text-gray-700 bg-white'} leading-tight focus:outline-none focus:shadow-outline`}
+          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline"
           placeholder="Nhập tên của bạn"
           value={playerName}
           onChange={(e) => setPlayerName(e.target.value)}
@@ -102,10 +94,10 @@ function HomePage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className={theme === 'vscode' ? 'bg-[#37373D] p-4 rounded-lg shadow' : 'bg-purple-50 p-4 rounded-lg shadow'}>
-          <h2 className={`text-xl font-semibold ${theme === 'vscode' ? 'text-blue-300' : 'text-purple-700'} mb-4`}>Tạo phòng mới</h2>
+        <div className="bg-purple-50 p-4 rounded-lg shadow">
+          <h2 className="text-xl font-semibold text-purple-700 mb-4">Tạo phòng mới</h2>
           <button
-            className={`w-full ${theme === 'vscode' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-purple-600 hover:bg-purple-700'} text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-300`}
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-300"
             onClick={createRoom}
             disabled={loading}
           >
@@ -113,19 +105,19 @@ function HomePage() {
           </button>
         </div>
         
-        <div className={theme === 'vscode' ? 'bg-[#37373D] p-4 rounded-lg shadow' : 'bg-indigo-50 p-4 rounded-lg shadow'}>
-          <h2 className={`text-xl font-semibold ${theme === 'vscode' ? 'text-blue-300' : 'text-indigo-700'} mb-4`}>Tham gia phòng</h2>
+        <div className="bg-indigo-50 p-4 rounded-lg shadow">
+          <h2 className="text-xl font-semibold text-indigo-700 mb-4">Tham gia phòng</h2>
           <div className="mb-4">
             <input
               type="text"
-              className={`shadow appearance-none border rounded w-full py-2 px-3 ${theme === 'vscode' ? 'bg-[#3C3C3C] text-gray-100 border-[#6B6B6B]' : 'text-gray-700 bg-white'} leading-tight focus:outline-none focus:shadow-outline`}
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline"
               placeholder="Nhập mã phòng"
               value={roomId}
               onChange={(e) => setRoomId(e.target.value.toUpperCase())}
             />
           </div>
           <button
-            className={`w-full ${theme === 'vscode' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-300`}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-300"
             onClick={joinRoom}
             disabled={loading}
           >

@@ -26,45 +26,16 @@ function ChatBox({ messages, onSendMessage, compact = false }: ChatBoxProps) {
   const remainingChars = MAX_MESSAGE_LENGTH - newMessage.length;
 
   // Xác định màu sắc dựa trên theme
-  const containerBg = theme === 'vscode' 
-    ? 'bg-[#2D2D2D] border border-[#3C3C3C]' 
-    : 'bg-white';
-    
-  const headerBg = theme === 'vscode'
-    ? 'border-b border-[#3C3C3C]'
-    : 'border-b';
-    
-  const headerText = theme === 'vscode'
-    ? 'text-blue-300'
-    : 'text-gray-800';
-    
-  const emptyText = theme === 'vscode'
-    ? 'text-gray-400'
-    : 'text-gray-500';
-    
-  const messageSenderText = theme === 'vscode'
-    ? 'text-blue-400'
-    : 'text-indigo-600';
-    
-  const messageTimestampText = theme === 'vscode'
-    ? 'text-gray-400'
-    : 'text-gray-500';
-    
-  const messageBg = theme === 'vscode'
-    ? 'bg-[#37373D] text-gray-200'
-    : 'bg-gray-100 text-gray-800';
-    
-  const inputBg = theme === 'vscode'
-    ? 'bg-[#3C3C3C] focus:ring-blue-500 border-[#6B6B6B] text-gray-200'
-    : 'bg-gray-50 focus:ring-purple-500 border-gray-200 text-gray-800';
-    
-  const buttonBg = theme === 'vscode'
-    ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
-    : 'bg-purple-600 hover:bg-purple-700 focus:ring-purple-500';
-    
-  const remainingCharsColor = remainingChars <= 10
-    ? 'text-red-500'
-    : theme === 'vscode' ? 'text-gray-400' : 'text-gray-500';
+  const containerBg = 'bg-white';
+  const headerBg = 'border-b';
+  const headerText = 'text-gray-800';
+  const emptyText = 'text-gray-500';
+  const messageSenderText = 'text-indigo-600';
+  const messageTimestampText = 'text-gray-500';
+  const messageBg = 'bg-gray-100 text-gray-800';
+  const inputBg = 'bg-gray-50 focus:ring-purple-500 border-gray-200 text-gray-800';
+  const buttonBg = 'bg-purple-600 hover:bg-purple-700 focus:ring-purple-500';
+  const remainingCharsColor = remainingChars <= 10 ? 'text-red-500' : 'text-gray-500';
 
   // Tự động cuộn xuống tin nhắn mới nhất
   const scrollToBottom = () => {
@@ -134,7 +105,7 @@ function ChatBox({ messages, onSendMessage, compact = false }: ChatBoxProps) {
         )}
       </div>
       
-      <div className={`p-3 ${theme === 'vscode' ? 'border-t border-[#3C3C3C]' : 'border-t'}`}>
+      <div className="p-3 border-t">
         <form onSubmit={handleSubmit} className="flex flex-col">
           <div className="flex">
             <input

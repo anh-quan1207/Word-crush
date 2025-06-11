@@ -17,14 +17,10 @@ const ThemeToggleButton = ({ className = '' }: ThemeToggleButtonProps) => {
     buttonStyle = 'bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 border-purple-300';
     icon = '🌸';
     label = 'Hồng';
-  } else if (theme === 'dark') {
+  } else {
     buttonStyle = 'bg-gradient-to-r from-gray-800 to-gray-700 hover:from-gray-700 hover:to-gray-600 border-gray-600';
     icon = '🌙';
     label = 'Tối';
-  } else { // vscode
-    buttonStyle = 'bg-gradient-to-r from-blue-800 to-blue-700 hover:from-blue-700 hover:to-blue-600 border-blue-600';
-    icon = '💻';
-    label = 'Code';
   }
   
   return (

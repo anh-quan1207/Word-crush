@@ -54,23 +54,24 @@ function GamePage() {
   const [timeRemaining, setTimeRemaining] = useState(30);
   const [playerOrder, setPlayerOrder] = useState([]);
   const timerRef = useRef(null);
+  const wordHistoryRef = useRef(null);
 
   const myPlayerId = socket?.id;
 
   // Xác định màu sắc dựa trên theme
-  const containerClass = theme === 'vscode' 
+  const containerClass = theme === 'dark' 
     ? 'bg-[#2D2D2D] text-gray-100 border border-[#3C3C3C]' 
     : 'bg-white';
 
-  const headerClass = theme === 'vscode' 
+  const headerClass = theme === 'dark' 
     ? 'text-blue-300' 
     : 'text-purple-700';
 
-  const cardClass = theme === 'vscode'
+  const cardClass = theme === 'dark'
     ? 'bg-[#37373D] border-[#3C3C3C]'
     : 'bg-gray-50';
 
-  const inputClass = theme === 'vscode'
+  const inputClass = theme === 'dark'
     ? 'bg-[#3C3C3C] text-gray-100 border-[#6B6B6B] focus:ring-blue-500'
     : 'bg-white text-gray-700 border-gray-300 focus:ring-purple-500';
 
@@ -291,6 +292,13 @@ function GamePage() {
     }
   }, [gameEnded]);
 
+  // Tự động scroll xuống từ mới nhất trong lịch sử từ
+  useEffect(() => {
+    if (wordHistoryRef.current) {
+      wordHistoryRef.current.scrollTop = wordHistoryRef.current.scrollHeight;
+    }
+  }, [wordHistory]);
+
   if (gameEnded) {
     return (
       <div className={`${containerClass} rounded-xl shadow-md p-6`}>
@@ -298,7 +306,7 @@ function GamePage() {
         
         {/* Chỉ hiển thị thông báo nếu là thông báo về người thắng cuộc */}
         {gameMessage && gameMessage.includes('Người thắng') && (
-          <div className={theme === 'vscode' 
+          <div className={theme === 'dark' 
             ? "bg-blue-900/30 border border-blue-800/50 text-blue-300 px-4 py-3 mb-6 rounded relative"
             : "bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 mb-6 rounded relative"
           }>
@@ -306,14 +314,14 @@ function GamePage() {
           </div>
         )}
         
-        <div className={`${theme === 'vscode' ? 'bg-[#37373D] from-blue-900/20 to-indigo-900/20' : 'bg-gradient-to-r from-purple-100 to-indigo-100'} p-4 rounded-lg mb-6`}>
+        <div className={`${theme === 'dark' ? 'bg-[#37373D] from-blue-900/20 to-indigo-900/20' : 'bg-gradient-to-r from-purple-100 to-indigo-100'} p-4 rounded-lg mb-6`}>
           <h2 className={`text-xl font-semibold ${headerClass} mb-3`}>Xếp hạng</h2>
           <div className="space-y-2">
             {rankings.map((player, index) => (
               <div 
                 key={player.id} 
                 className={`p-3 rounded-lg flex justify-between items-center ${
-                  theme === 'vscode' ? 
+                  theme === 'dark' ? 
                     (index === 0 ? 'bg-yellow-900/30 border border-yellow-700/50' : 
                     index === 1 ? 'bg-gray-700/30 border border-gray-600/50' : 
                     index === 2 ? 'bg-amber-800/30 border border-amber-700/50' : 
@@ -330,22 +338,22 @@ function GamePage() {
                     index === 0 ? 'bg-yellow-500' :
                     index === 1 ? 'bg-gray-500' :
                     index === 2 ? 'bg-amber-600' :
-                    theme === 'vscode' ? 'bg-blue-600' : 'bg-purple-600'
+                    theme === 'dark' ? 'bg-blue-600' : 'bg-purple-600'
                   } text-white flex items-center justify-center font-bold mr-3`}>
                     {index + 1}
                   </span>
-                  <span className={`font-medium ${theme === 'vscode' ? 'text-gray-200' : ''}`}>{player.name}</span>
+                  <span className={`font-medium ${theme === 'dark' ? 'text-gray-200' : ''}`}>{player.name}</span>
                 </div>
-                <span className={theme === 'vscode' ? 'text-gray-300' : 'text-gray-600'}>{player.loseCount} thua</span>
+                <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}>{player.loseCount} thua</span>
               </div>
             ))}
           </div>
         </div>
         
         <div className="text-center">
-          <p className={`mb-4 ${theme === 'vscode' ? 'text-gray-300' : 'text-gray-500'}`}>Tự động quay lại phòng chờ sau 10 giây...</p>
+          <p className={`mb-4 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}>Tự động quay lại phòng chờ sau 10 giây...</p>
           <button
-            className={`${theme === 'vscode' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-purple-600 hover:bg-purple-700'} text-white font-bold py-2 px-6 rounded transition duration-300`}
+            className={`${theme === 'dark' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-purple-600 hover:bg-purple-700'} text-white font-bold py-2 px-6 rounded transition duration-300`}
             onClick={backToRoom}
           >
             Quay lại phòng chờ ngay
@@ -359,7 +367,7 @@ function GamePage() {
     <div className={`${containerClass} rounded-xl shadow-md overflow-hidden relative`}>
       
       {error && (
-        <div className={theme === 'vscode' 
+        <div className={theme === 'dark' 
           ? "bg-red-900/30 border border-red-800/50 text-red-300 px-4 py-3 m-4 rounded relative"
           : "bg-red-100 border border-red-400 text-red-700 px-4 py-3 m-4 rounded relative"
         }>
@@ -368,7 +376,7 @@ function GamePage() {
       )}
       
       {gameMessage && (
-        <div className={theme === 'vscode' 
+        <div className={theme === 'dark' 
           ? "bg-blue-900/30 border border-blue-800/50 text-blue-300 px-4 py-3 m-4 rounded relative"
           : "bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 m-4 rounded relative"
         }>
@@ -407,8 +415,8 @@ function GamePage() {
                   player.id === currentPlayerId 
                     ? 'bg-green-500 text-white font-bold' 
                     : player.id === nextPlayerId 
-                      ? theme === 'vscode' ? 'bg-blue-900 border border-blue-700 text-blue-300' : 'bg-blue-100 border border-blue-500' 
-                      : theme === 'vscode' ? 'bg-[#37373D]' : 'bg-gray-100'
+                      ? theme === 'dark' ? 'bg-blue-900 border border-blue-700 text-blue-300' : 'bg-blue-100 border border-blue-500' 
+                      : theme === 'dark' ? 'bg-[#37373D]' : 'bg-gray-100'
                 }`}
               >
                 {player.name} {player.id === currentPlayerId ? '(Đang chơi)' : player.id === nextPlayerId ? '(Tiếp theo)' : ''}
@@ -419,20 +427,20 @@ function GamePage() {
         
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
           <div className={`md:col-span-1 ${cardClass} p-4 rounded-lg`}>
-            <h3 className={`text-lg font-semibold mb-3 ${theme === 'vscode' ? 'text-blue-300' : ''}`}>Người chơi</h3>
+            <h3 className={`text-lg font-semibold mb-3 ${theme === 'dark' ? 'text-blue-300' : ''}`}>Người chơi</h3>
             <ul className="space-y-2">
               {players.map(player => (
                 <li 
                   key={player.id}
                   className={`p-2 rounded flex justify-between ${
                     player.id === currentPlayerId 
-                      ? theme === 'vscode' ? 'bg-blue-900 font-bold' : 'bg-green-100 font-bold'
+                      ? theme === 'dark' ? 'bg-blue-900 font-bold' : 'bg-green-100 font-bold'
                       : ''
                   } ${losers.includes(player.id) ? 'text-gray-400 line-through' : ''}`}
                 >
                   <span>{player.name}</span>
                   {player.id === currentPlayerId && !losers.includes(player.id) && (
-                    <span className={theme === 'vscode' ? 'text-blue-300' : 'text-green-600'}>●</span>
+                    <span className={theme === 'dark' ? 'text-blue-300' : 'text-green-600'}>●</span>
                   )}
                 </li>
               ))}
@@ -441,15 +449,15 @@ function GamePage() {
           
           <div className="md:col-span-3">
             <div className={`${cardClass} p-4 rounded-lg mb-6`}>
-              <h3 className={`text-lg font-semibold mb-3 ${theme === 'vscode' ? 'text-blue-300' : ''}`}>Từ hiện tại</h3>
+              <h3 className={`text-lg font-semibold mb-3 ${theme === 'dark' ? 'text-blue-300' : ''}`}>Từ hiện tại</h3>
               {currentWord ? (
-                <div className={`flex flex-col justify-center items-center ${theme === 'vscode' ? 'bg-[#1E1E1E]' : 'bg-white'} p-4 rounded-lg shadow-sm`}>
+                <div className={`flex flex-col justify-center items-center ${theme === 'dark' ? 'bg-[#1E1E1E]' : 'bg-white'} p-4 rounded-lg shadow-sm`}>
                   <div className={`text-2xl font-bold ${headerClass} min-h-[60px] mb-3`}>
                     {currentWord}
                   </div>
                   
                   {currentWord && (
-                    <div className={`text-sm ${theme === 'vscode' ? 'text-gray-300' : 'text-gray-600'} mb-2`}>
+                    <div className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'} mb-2`}>
                       Từ tiếp theo phải bắt đầu bằng từ: <span className={`font-bold ${headerClass} text-xl`}>
                         {currentWord.trim().split(/\s+/).pop()}
                       </span>
@@ -458,7 +466,7 @@ function GamePage() {
                   
                   <div className="flex items-center justify-between w-full">
                     {lastPlayerId && (
-                      <div className={`text-sm ${theme === 'vscode' ? 'text-gray-300' : 'text-gray-600'}`}>
+                      <div className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
                         Người chơi: {players.find(p => p.id === lastPlayerId)?.name || 'Không xác định'}
                       </div>
                     )}
@@ -466,7 +474,7 @@ function GamePage() {
                     {currentWord && myPlayerId && lastPlayerId && (myPlayerId !== lastPlayerId) && (
                       <button
                         onClick={reportWord}
-                        className={`px-3 py-1 rounded text-sm font-bold ${theme === 'vscode' ? 'bg-red-700 hover:bg-red-800' : 'bg-red-600 hover:bg-red-700'} text-white transition duration-200`}
+                        className={`px-3 py-1 rounded text-sm font-bold ${theme === 'dark' ? 'bg-red-700 hover:bg-red-800' : 'bg-red-600 hover:bg-red-700'} text-white transition duration-200`}
                         title="Báo cáo từ không hợp lệ"
                       >
                         Báo cáo
@@ -475,7 +483,7 @@ function GamePage() {
                   </div>
                 </div>
               ) : (
-                <div className={`${theme === 'vscode' ? 'text-gray-300 bg-[#1E1E1E]' : 'text-gray-500 bg-white'} italic flex justify-center items-center min-h-[60px] p-4 rounded-lg shadow-sm`}>
+                <div className={`${theme === 'dark' ? 'text-gray-300 bg-[#1E1E1E]' : 'text-gray-500 bg-white'} italic flex justify-center items-center min-h-[60px] p-4 rounded-lg shadow-sm`}>
                   Chưa có từ nào
                 </div>
               )}
@@ -483,15 +491,18 @@ function GamePage() {
             
             {wordHistory.length > 0 && (
               <div className={`${cardClass} p-4 rounded-lg mb-6`}>
-                <h3 className={`text-lg font-semibold mb-3 ${theme === 'vscode' ? 'text-blue-300' : ''}`}>Lịch sử từ</h3>
-                <div className={`${theme === 'vscode' ? 'bg-[#1E1E1E]' : 'bg-white'} p-3 rounded-lg shadow-sm max-h-40 overflow-y-auto`}>
+                <h3 className={`text-lg font-semibold mb-3 ${theme === 'dark' ? 'text-blue-300' : ''}`}>Lịch sử từ</h3>
+                <div 
+                  ref={wordHistoryRef}
+                  className={`${theme === 'dark' ? 'bg-[#1E1E1E]' : 'bg-white'} p-3 rounded-lg shadow-sm max-h-40 overflow-y-auto`}
+                >
                   <ul className="space-y-1">
                     {wordHistory.map((item, index) => {
                       const player = players.find(p => p.id === item.playerId);
                       return (
                         <li key={index} className="text-sm flex justify-between">
-                          <span className={`font-medium ${theme === 'vscode' ? 'text-blue-300' : ''}`}>{item.word}</span>
-                          <span className={theme === 'vscode' ? 'text-gray-300' : 'text-gray-600'}>{player?.name || 'Người chơi'}</span>
+                          <span className={`font-medium ${theme === 'dark' ? 'text-blue-300' : ''}`}>{item.word}</span>
+                          <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}>{player?.name || 'Người chơi'}</span>
                         </li>
                       );
                     })}
@@ -501,7 +512,7 @@ function GamePage() {
             )}
             
             <div className={`${cardClass} p-4 rounded-lg`}>
-              <h3 className={`text-lg font-semibold mb-3 ${theme === 'vscode' ? 'text-blue-300' : ''}`}>
+              <h3 className={`text-lg font-semibold mb-3 ${theme === 'dark' ? 'text-blue-300' : ''}`}>
                 {isMyTurn ? 'Lượt của bạn' : 'Chờ lượt của bạn'}
               </h3>
               
@@ -525,7 +536,7 @@ function GamePage() {
                   disabled={!isMyTurn || !inputWord.trim() || losers.includes(myPlayerId || '')}
                   className={`px-4 py-2 rounded font-bold ${
                     isMyTurn && inputWord.trim() 
-                      ? theme === 'vscode' 
+                      ? theme === 'dark' 
                         ? 'bg-blue-600 hover:bg-blue-700 text-white' 
                         : 'bg-green-600 hover:bg-green-700 text-white' 
                       : 'bg-gray-300 text-gray-600 cursor-not-allowed'
@@ -541,22 +552,22 @@ function GamePage() {
       
       {showReportModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className={`${theme === 'vscode' ? 'bg-[#2D2D2D] border border-[#3C3C3C] text-gray-200' : 'bg-white'} rounded-lg p-6 max-w-md w-full`}>
-            <h2 className={`text-xl font-bold mb-4 ${theme === 'vscode' ? 'text-blue-300' : ''}`}>Báo cáo từ</h2>
-            <p className={`mb-4 ${theme === 'vscode' ? 'text-gray-300' : ''}`}>Có người cho rằng từ "{currentWord}" không hợp lệ. Bạn có đồng ý không?</p>
+          <div className={`${theme === 'dark' ? 'bg-[#2D2D2D] border border-[#3C3C3C] text-gray-200' : 'bg-white'} rounded-lg p-6 max-w-md w-full`}>
+            <h2 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-blue-300' : ''}`}>Báo cáo từ</h2>
+            <p className={`mb-4 ${theme === 'dark' ? 'text-gray-300' : ''}`}>Có người cho rằng từ "{currentWord}" không hợp lệ. Bạn có đồng ý không?</p>
             
             <div className="flex justify-between mb-4">
-              <div className={`text-sm ${theme === 'vscode' ? 'text-gray-300' : 'text-gray-600'}`}>
+              <div className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
                 Đã bỏ phiếu: {reports.length}/{players.length}
               </div>
-              <div className={`text-sm ${theme === 'vscode' ? 'text-gray-300' : 'text-gray-600'}`}>
+              <div className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
                 Đồng ý: {reports.filter(r => r.vote).length}
               </div>
             </div>
             
             <div className="mb-4">
-              <h3 className={`text-sm font-semibold ${theme === 'vscode' ? 'text-gray-200' : 'text-gray-700'} mb-1`}>Danh sách bỏ phiếu:</h3>
-              <ul className={`text-xs ${theme === 'vscode' ? 'text-gray-300' : 'text-gray-600'}`}>
+              <h3 className={`text-sm font-semibold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'} mb-1`}>Danh sách bỏ phiếu:</h3>
+              <ul className={`text-xs ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
                 {reports.map(report => {
                   const player = players.find(p => p.id === report.playerId);
                   return (
@@ -572,13 +583,13 @@ function GamePage() {
             <div className="flex justify-center space-x-4 mt-6">
               <button
                 onClick={() => voteReport(true)}
-                className={`${theme === 'vscode' ? 'bg-red-700 hover:bg-red-800' : 'bg-red-600 hover:bg-red-700'} text-white font-bold py-2 px-6 rounded transition duration-300`}
+                className={`${theme === 'dark' ? 'bg-red-700 hover:bg-red-800' : 'bg-red-600 hover:bg-red-700'} text-white font-bold py-2 px-6 rounded transition duration-300`}
               >
                 Đồng ý
               </button>
               <button
                 onClick={() => voteReport(false)}
-                className={`${theme === 'vscode' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'} text-white font-bold py-2 px-6 rounded transition duration-300`}
+                className={`${theme === 'dark' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'} text-white font-bold py-2 px-6 rounded transition duration-300`}
               >
                 Không đồng ý
               </button>

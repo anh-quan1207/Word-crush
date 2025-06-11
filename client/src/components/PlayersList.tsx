@@ -17,29 +17,12 @@ function PlayersList({ players, hostId }: PlayersListProps) {
   const { theme } = useTheme();
   
   // Xác định màu sắc dựa trên theme
-  const containerBg = theme === 'vscode' 
-    ? 'bg-[#2D2D2D] border border-[#3C3C3C]' 
-    : 'bg-white';
-    
-  const headerBg = theme === 'vscode'
-    ? 'bg-[#37373D] border-b border-[#3C3C3C]'
-    : 'bg-purple-50 border-b';
-    
-  const headerText = theme === 'vscode'
-    ? 'text-blue-300'
-    : 'text-purple-800';
-    
-  const dividerColor = theme === 'vscode'
-    ? 'divide-[#3C3C3C]'
-    : 'divide-gray-200';
-    
-  const emptyText = theme === 'vscode'
-    ? 'text-gray-400'
-    : 'text-gray-500';
-    
-  const avatarBg = theme === 'vscode'
-    ? 'bg-gradient-to-r from-blue-700 to-blue-900'
-    : 'bg-gradient-to-r from-purple-400 to-indigo-500';
+  const containerBg = 'bg-white';
+  const headerBg = 'bg-purple-50 border-b';
+  const headerText = 'text-purple-800';
+  const dividerColor = 'divide-gray-200';
+  const emptyText = 'text-gray-500';
+  const avatarBg = 'bg-gradient-to-r from-purple-400 to-indigo-500';
 
   return (
     <div className={`${containerBg} rounded-lg shadow-md overflow-hidden`}>
@@ -62,7 +45,7 @@ function PlayersList({ players, hostId }: PlayersListProps) {
                   <div className={`w-8 h-8 rounded-full ${avatarBg} flex items-center justify-center text-white font-bold`}>
                     {player.name.charAt(0).toUpperCase()}
                   </div>
-                  <span className={`ml-3 font-medium ${theme === 'vscode' ? 'text-gray-200' : ''}`}>
+                  <span className="ml-3 font-medium">
                     {player.name}
                     {player.id === hostId && (
                       <span className="ml-2 text-yellow-500" title="Chủ phòng">👑</span>
@@ -71,7 +54,7 @@ function PlayersList({ players, hostId }: PlayersListProps) {
                 </div>
                 <div className="flex items-center">
                   {player.loseCount > 0 && (
-                    <span className={`text-sm ${theme === 'vscode' ? 'text-red-400' : 'text-red-500'} mr-2`}>{player.loseCount} thua</span>
+                    <span className="text-sm text-red-500 mr-2">{player.loseCount} thua</span>
                   )}
                 </div>
               </li>
